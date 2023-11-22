@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const app = express();const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 app.use(cors())
@@ -31,6 +32,7 @@ async function run() {
     const newsCollection = client.db('charityHome').collection('news')
     const userCollection = client.db('charityHome').collection('users')
     const contactCollection = client.db('charityHome').collection('contacts')
+    const paymentCollection =  client.db('charityHome').collection('payments')
 
     // get all causes data
     app.get('/causes', async(req, res) =>{
@@ -99,8 +101,30 @@ async function run() {
             res.status(500).send("Internal Server Error");
         }
     });
-    
+    // Create payment intent system
+    app.post('/create-payment-intent', async (req, res) => {
+        const { donationAmount } = req.body;
+        const amount = donationAmount * 100;
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount,
+            currency: 'usd',
+            payment_method_types: ['card']
+        });
+        
+        res.send({
+            clientSecret: paymentIntent.client_secret
+        });
+        
+      });
 
+
+    //   Payment related api 
+    app.post('/payments', async(req, res) =>{
+        const payment = req.body;
+        console.log(payment)
+        const result = await paymentCollection.insertOne(payment)
+        res.send(result)
+    })
 
     // get all event data
     app.get('/event', async(req, res) =>{
