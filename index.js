@@ -5,10 +5,16 @@ require('dotenv').config()
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
-app.use(cors())
+// const corsOptions = {
+//     origin: "http://localhost:5173", // Replace with the origin of your frontend
+//     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//     credentials: true,
+//     optionsSuccessStatus: 204,
+//  };
+ 
+app.use(cors());
 app.use(express.json())
 
-console.log(process.env.DB_PASS)
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.e60xkn0.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -33,19 +39,22 @@ async function run() {
     const userCollection = client.db('charityHome').collection('users')
     const contactCollection = client.db('charityHome').collection('contacts')
     const paymentCollection =  client.db('charityHome').collection('payments')
+    const socialMediaCollection =  client.db('charityHome').collection('social-media')
 
-    // get all causes data
-    app.get('/causes', async(req, res) =>{
-        const causes = causesCollection.find();
-        const result = await causes.toArray()
-        res.send(result)
-    })
     // get all user data
     app.get('/user', async(req, res) =>{
         const user = userCollection.find();
         const result = await user.toArray()
         res.send(result)
     })
+
+    // get all volunteer send email data
+    app.get('/send-email', async(req, res) =>{
+        const email = contactCollection.find();
+        const result = await email.toArray()
+        res.send(result)
+    })
+
     // get all user send mail or contact data from client to backend
     app.post('/send-email', async(req, res) =>{
         const email = req.body;
@@ -60,7 +69,27 @@ async function run() {
         const result = await userCollection.insertOne(user)
         res.send(result)
     })
+    // get all user data update from client to backend
+    app.post('/users-update', async(req, res) =>{
+        const user = req.body;
+        console.log(user)
+        const result = await userCollection.insertOne(user)
+        res.send(result)
+    })
 
+    // get all causes data
+    app.get('/causes', async(req, res) =>{
+        const causes = causesCollection.find();
+        const result = await causes.toArray()
+        res.send(result)
+    })
+    // added a single causes 
+    app.post('/causes', async(req,res) =>{
+        const addedCauses = req.body;
+        console.log(addedCauses);
+        const result = await causesCollection.insertOne(addedCauses);
+        res.send(result)
+    })
     // get all causes details data
     app.get('/causesdetails', async(req, res) =>{
         const causesDetails = causesDetailsCollection.find();
@@ -68,39 +97,15 @@ async function run() {
         res.send(result)
     })
     
-
-    app.get('/causesdetails/:id', async (req, res) => {
-        const id = req.params.id;
-        console.log(id);
-    
-        try {
-            let query;
-            if (ObjectId.isValid(id)) {
-                // If the ID is a valid ObjectId, search directly by _id
-                query = { _id: new ObjectId(id) };
-            } else if (!isNaN(id)) {
-                // If the ID is a numeric string, search by the id field
-                query = { id: parseInt(id, 10) };
-            } else {
-                // If the ID is neither a valid ObjectId nor a numeric string, return an error
-                console.log("Invalid ID format:", id);
-                res.status(400).send("Invalid ID format");
-                return;
-            }
-    
-            const singleCausesDetails = await causesDetailsCollection.findOne(query);
-    
-            if (singleCausesDetails) {
-                res.send(singleCausesDetails);
-            } else {
-                console.log("Cause details not found for ID:", id);
-                res.status(404).send("Cause details not found");
-            }
-        } catch (error) {
-            console.error("Error retrieving cause details:", error);
-            res.status(500).send("Internal Server Error");
-        }
+    // get single causes details collection
+    app.get('/causesdetails/:title', async (req, res) => {
+        const title = req.params.title;
+        console.log(title)
+        const query = { title: title }; // Corrected syntax
+        const user = await causesDetailsCollection.findOne(query);
+        res.send(user);
     });
+    
     // Create payment intent system
     app.post('/create-payment-intent', async (req, res) => {
         const { donationAmount } = req.body;
@@ -121,11 +126,16 @@ async function run() {
     //   Payment related api 
     app.post('/payments', async(req, res) =>{
         const payment = req.body;
-        console.log(payment)
         const result = await paymentCollection.insertOne(payment)
         res.send(result)
     })
 
+    // get all payment history data
+    app.get('/payment-history', async(req, res) =>{
+        const payment = paymentCollection.find();
+        const result= await payment.toArray();
+        res.send(result)
+    })
     // get all event data
     app.get('/event', async(req, res) =>{
         const event = eventCollection.find();
@@ -138,8 +148,28 @@ async function run() {
         const result = await newsCollection.find().toArray();
         res.send(result)
     })
-
-
+        // get all social media details and update'
+        app.post('/social-media', async (req, res) => {
+            const socialMedia = req.body;
+            console.log(socialMedia);
+        
+            // Check if social media data already exists
+            const existingData = await socialMediaCollection.findOne();
+        
+            if (existingData) {
+                // If data exists, remove the existing entry
+                await socialMediaCollection.deleteOne();
+            }
+        
+            // Insert the new social media data
+            const result = await socialMediaCollection.insertOne(socialMedia);
+            res.send(result);
+        });
+    // get social media data
+    app.get('/social-media', async(req, res)=>{
+        const result = await socialMediaCollection.find().toArray();
+        res.send(result)
+    })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
