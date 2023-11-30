@@ -105,7 +105,35 @@ async function run() {
         const user = await causesDetailsCollection.findOne(query);
         res.send(user);
     });
-    
+
+    // update causes on admin dashborad
+    app.put("/causes/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const body = req.body;
+        const updateCauses = {
+          $set: {
+            image: body.image,
+            title: body.title,
+            category: body.category,
+            date: body.date,
+            short_description: body.short_description,
+            donation_goal: body.donation_goal,
+            donation_achived: body.donation_achived,
+          },
+        };
+        const result = await causesCollection.updateOne(query, updateCauses);
+        res.send(result);
+      });
+    // delete single causes on admin dashborad
+    app.delete("/causes/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await causesCollection.deleteOne(query);
+        res.send(result);
+      });
+
+
     // Create payment intent system
     app.post('/create-payment-intent', async (req, res) => {
         const { donationAmount } = req.body;
