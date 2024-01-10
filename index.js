@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
-const app = express();const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const app = express();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
@@ -40,9 +41,11 @@ async function run() {
     const contactCollection = client.db('charityHome').collection('contacts')
     const paymentCollection =  client.db('charityHome').collection('payments')
     const socialMediaCollection =  client.db('charityHome').collection('social-media')
+    const volunteerCollection =  client.db('charityHome').collection('volunteer')
+    const blogCollection =  client.db('charityHome').collection('blogs')
 
     // get all user data
-    app.get('/user', async(req, res) =>{
+    app.get('/users', async(req, res) =>{
         const user = userCollection.find();
         const result = await user.toArray()
         res.send(result)
@@ -70,12 +73,27 @@ async function run() {
         res.send(result)
     })
     // get all user data update from client to backend
-    app.post('/users-update', async(req, res) =>{
-        const user = req.body;
-        console.log(user)
-        const result = await userCollection.insertOne(user)
-        res.send(result)
-    })
+    app.put('/users/:id', async(req, res) =>{
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const body = req.body;
+        const updateCauses = {
+          $set: {
+            image: body.image,
+            name: body.name,
+            phone: body.phone,
+            details: body.details,
+            facebook: body.facebook,
+            twitter: body.twitter,
+            instagram: body.instagram,
+            linkedin: body.linkedin,
+            github: body.github,
+            website: body.website,
+          },
+        };
+        const result = await causesCollection.updateOne(query, updateCauses);
+        res.send(result);
+      });
 
     // get all causes data
     app.get('/causes', async(req, res) =>{
@@ -105,7 +123,6 @@ async function run() {
         const user = await causesDetailsCollection.findOne(query);
         res.send(user);
     });
-
     // update causes on admin dashborad
     app.put("/causes/:id", async (req, res) => {
         const id = req.params.id;
@@ -132,8 +149,56 @@ async function run() {
         const result = await causesCollection.deleteOne(query);
         res.send(result);
       });
-
-
+    //  Added Volunteer
+    app.post('/volunteer', async(req,res) =>{
+        const addedVolunteer = req.body;
+        console.log(addedVolunteer);
+        const result = await volunteerCollection.insertOne(addedVolunteer);
+        res.send(result)
+    })
+    // get all volunteer data
+    app.get('/volunteer', async(req, res) =>{
+        const volunteer = await volunteerCollection.find().toArray();
+        res.send(volunteer)
+    })
+    // update volunteer data on admin dashborad
+    app.put("/volunteer/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const body = req.body;
+        const updateVolunteerData = {
+          $set: {
+            image: body.image,
+            title: body.title,
+            details: body.details,
+            facebook: body.facebook,
+            twitter: body.twitter,
+            instagram: body.instagram,
+            linkedin: body.linkedin,
+          },
+        };
+        const result = await volunteerCollection.updateOne(query, updateVolunteerData);
+        res.send(result);
+      });
+    // delete volunteer data on admin dashborad
+    app.delete("/volunteer/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await volunteerCollection.deleteOne(query);
+        res.send(result);
+      });
+    //  Post a blog
+    app.post('/blogs', async(req,res) =>{
+        const addedBlogs = req.body;
+        console.log(addedBlogs);
+        const result = await blogCollection.insertOne(addedBlogs);
+        res.send(result)
+    })
+    // get all single blog data
+    app.get('/blogs', async(req,res) =>{
+        const blog = await blogCollection.find().toArray()
+        res.send(blog)
+    })
     // Create payment intent system
     app.post('/create-payment-intent', async (req, res) => {
         const { donationAmount } = req.body;
@@ -207,8 +272,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
 
 app.get('/', (req, res) =>{
     res.send('charity server in running')
